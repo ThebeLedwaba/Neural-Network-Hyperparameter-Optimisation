@@ -1,0 +1,80 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  frontend-lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: cd greenhouse-dashboard && npm install
+    
+    - name: Run ESLint
+      run: cd greenhouse-dashboard && npm run lint
+      continue-on-error: true
+    
+    - name: Build frontend
+      run: cd greenhouse-dashboard && npm run build
+
+  backend-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install backend dependencies
+      run: cd greenhouse-backend && npm install
+    
+    - name: Verify server.js syntax
+      run: cd greenhouse-backend && node -c server.js
+
+  esp32-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Arduino CLI
+      uses: arduino/setup-arduino-cli@v1
+    
+    - name: Install ESP32 board core
+      run: |
+        arduino-cli core install esp32:esp32 --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+    
+    - name: Build ESP32 firmware
+      run: |
+        arduino-cli compile --fqbn esp32:esp32:esp32 "Final code c++/sketch_may17a.ino"
+      continue-on-error: true
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Check dependencies for vulnerabilities
+      run: |
+        cd greenhouse-backend && npm audit --production || true
+        cd ../greenhouse-dashboard && npm audit --production || true
